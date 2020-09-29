@@ -40,6 +40,8 @@ output "public_ip" {
   value = aws_instance.example.public_ip
 }
 
+
+
 resource "aws_launch_configuration" "example" {
   image_id = "ami-0fff85c1d8aa5372b"
   instance_type = "t2.micro"
@@ -88,9 +90,9 @@ resource "aws_elb" "example" {
   health_check {
     healthy_threshold   = 2
     unhealthy_threshold = 2
-    timeout                  = 3
-    interval                   = 30
-    target = "${"HTTP:"}${var.server_port}${"/"}"
+    timeout                 = 3
+    interval                  = 30
+    target = "HTTP:8080/"
   }
 }
 
@@ -110,4 +112,8 @@ resource "aws_security_group" "elb" {
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+output "elb_dns_name" {
+  value = aws_elb.example.dns_name
 }
