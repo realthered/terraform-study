@@ -2,18 +2,6 @@ provider "aws" {
   region = "ap-southeast-2"
 }
 
-resource "aws_s3_bucket" "terraform_state" {
-  bucket = "terraform-up-and-running-state-sjlee"
-
-  versioning {
-    enabled = true
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
 terraform {
   backend "s3" {
     bucket  = "terraform-up-and-running-state-sjlee"
@@ -34,8 +22,4 @@ resource "aws_dynamodb_table" "terraform_lock" {
     name = "LockID"
     type = "S"
   }
-}
-
-output "s3_bucket_arn" {
-  value = "aws_s3_bucket.terraform_state.arn"
 }
