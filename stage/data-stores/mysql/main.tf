@@ -8,9 +8,22 @@ terraform {
     key = "stage/data-stores/mysql/terraform.tfstate"
     region = "ap-southeast-2"
     encrypt = true
-   dynamodb_table = "terraform-up-and-running-lock"
+    dynamodb_table = "terraform-up-and-running-lock"
   }
 }
+
+resource "aws_dynamodb_table" "terraform_lock" {
+  name = "terraform-up-and-running-lock"
+  hash_key = "LockID"
+  read_capacity = 2
+  write_capacity = 2
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
+
 resource "aws_db_instance" "example" {
   engine = "mysql"
   allocated_storage = 10

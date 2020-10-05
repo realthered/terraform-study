@@ -1,11 +1,10 @@
-resource "aws_launch_configuration" "example" {
-  image_id = "ami-0f96495a064477ffb"
-  instance_type = "t2.micro"
-  security_groups = [aws_security_group.instance.id]
-  user_data = data.template_file.user_data.rendered
+data "terraform_remote_state" "db" {
+  backend = "s3" 
 
-  lifecycle {
-    create_before_destroy = true
+  config = {
+    bucket = var.db_remote_state_bucket
+    key = var.db_remote_state_key
+    region = "ap-southeast-2"
   }
 }
 
@@ -16,6 +15,26 @@ data "template_file" "user_data" {
     server_port = "${var.server_port}"
     db_address  = "${data.terraform_remote_state.db.address}"
     db_port     = "${data.terraform_remote_state.db.port}"
+  }
+}
+
+resource "aws_security_group" "instance" {
+  name = "${var.cluster_name}-instance"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+
+resource "aws_launch_configuration" "example" {
+  image_id = "ami-0f96495a064477ffb"
+  instance_type = "t2.micro"
+  security_groups = [aws_security_group.instance.id]
+  user_data       = data.template_file.user_data.rendered
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -33,24 +52,6 @@ resource "aws_autoscaling_group" "example" {
     key                        = "Name"
     value                     = var.cluster_name
     propagate_at_launch = true
-  }
-}
-
-data "terraform_remote_state" "db" {
-  backend = "s3"
-
-  config = {
-    bucket = var.db_remote_state_bucket
-    key = var.db_remote_state_key
-    region = "ap-southeast-2"
-  }
-}
-
-resource "aws_security_group" "instance" {
-  name = "${var.cluster_name}-instance"
-
-  lifecycle {
-    create_before_destroy = true
   }
 }
 
@@ -108,10 +109,4 @@ resource "aws_elb" "example" {
 
 resource "aws_security_group" "elb" {
   name = "${var.cluster_name}-elb"
-}
-
-
-variable "server_port" {
-  description = "The port the server will use for HTTP requests"
-  default       = 8080
 }
