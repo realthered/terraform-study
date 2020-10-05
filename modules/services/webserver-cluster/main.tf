@@ -2,8 +2,8 @@ data "terraform_remote_state" "db" {
   backend = "s3" 
 
   config = {
-    bucket = var.db_remote_state_bucket
-    key = var.db_remote_state_key
+    bucket = "${var.db_remote_state_bucket}"
+    key = "${var.db_remote_state_key}"
     region = "ap-southeast-2"
   }
 }
@@ -30,8 +30,8 @@ resource "aws_security_group" "instance" {
 resource "aws_launch_configuration" "example" {
   image_id = "ami-0f96495a064477ffb"
   instance_type = "t2.micro"
-  security_groups = [aws_security_group.instance.id]
-  user_data       = data.template_file.user_data.rendered
+  security_groups = ["${aws_security_group.instance.id}"]
+  user_data       = "${data.template_file.user_data.rendered}"
 
   lifecycle {
     create_before_destroy = true
@@ -39,18 +39,18 @@ resource "aws_launch_configuration" "example" {
 }
 
 resource "aws_autoscaling_group" "example" {
-  launch_configuration = aws_launch_configuration.example.id
+  launch_configuration = "${aws_launch_configuration.example.id}"
   availability_zones = ["ap-southeast-2a", "ap-southeast-2b"]
 
-  load_balancers = [aws_elb.example.name]
+  load_balancers = ["${aws_elb.example.name}"]
   health_check_type = "ELB"
 
-  min_size = var.min_size
-  max_size = var.max_size
+  min_size = "${var.min_size}"
+  max_size = "${var.max_size}"
 
   tag {
     key                        = "Name"
-    value                     = var.cluster_name
+    value                     = "${var.cluster_name}"
     propagate_at_launch = true
   }
 }
@@ -68,7 +68,7 @@ resource "aws_security_group_rule" "allow_server_http_inbound" {
 
 resource "aws_security_group_rule" "allow_http_inbound" {
   type = "ingress"
-  security_group_id = aws_security_group.elb.id
+  security_group_id = "${aws_security_group.elb.id}"
 
   from_port = 80
   to_port = 80
@@ -78,7 +78,7 @@ resource "aws_security_group_rule" "allow_http_inbound" {
 
 resource "aws_security_group_rule" "allow_all_outbound" {
   type = "egress"
-  security_group_id = aws_security_group.elb.id
+  security_group_id = "${aws_security_group.elb.id}"
 
   from_port = 0
   to_port = 0
@@ -89,12 +89,12 @@ resource "aws_security_group_rule" "allow_all_outbound" {
 resource "aws_elb" "example" {
   name                 = "terraform-asg-example"
   availability_zones = ["ap-southeast-2a", "ap-southeast-2b"]
-  security_groups = [aws_security_group.elb.id]
+  security_groups = ["${aws_security_group.elb.id}"]
 
   listener {
     lb_port               = 80
     lb_protocol         = "http"
-    instance_port      = var.server_port
+    instance_port      = "${var.server_port}"
     instance_protocol = "http"
   }
 
