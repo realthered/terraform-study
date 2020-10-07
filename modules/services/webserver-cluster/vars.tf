@@ -28,3 +28,17 @@ variable "min_size" {
 variable "max_size" {
   description = "The maximum number of EC2 Instances in the ASG"
 }
+
+variable "enable_autoscaling" {
+  description = "If set to true, enable auto scaling"
+}
+
+variable "ami" {
+  description = "The AMI to run in the cluster"
+  default = "ami-0f96495a064477ffb"
+}
+
+variable "server_text" {
+  description = "The text the web server should return"
+  default = "Hello, World!"
+}

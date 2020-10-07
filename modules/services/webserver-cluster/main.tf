@@ -13,9 +13,45 @@ data "template_file" "user_data" {
 
   vars = {
     server_port = "${var.server_port}"
-    db_address  = "${data.terraform_remote_state.db.address}"
-    db_port     = "${data.terraform_remote_state.db.port}"
+    db_address = "${data.terraform_remote_state.db.address}"
+    db_port = "${data.terraform_remote_state.db.port}"
+    server_text = "${var.server_text}"
   }
+}
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
+  alarm_name = "${var.cluster_name}-high-cpu-utilization"
+  namespace = "AWS/EC2"
+  metric_name = "CPUUtilization"
+
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.example.name}"
+  }
+
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods = 1
+  period = 300
+  statistic = "Average"
+  threshold = 90
+  unit = "Percent"
+}
+
+resource "aws_cloudwatch_metric_alarm" "low_cpu_credit_balance" {
+  count = "${format("%.1s", var.instance_type) == "t" ? 1 : 0}"
+  alarm_name = "${var.cluster_name}-low-cpu-credit-balance"
+  namespace = "AWS/EC2"
+  metric_name = "CPUCreditBalance"
+
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.example.name}"
+  }
+
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods = 1
+  period = 300
+  statistic = "Minimum"
+  threshold = 10
+  unit = "Count"
 }
 
 resource "aws_security_group" "instance" {
@@ -31,7 +67,7 @@ resource "aws_launch_configuration" "example" {
   image_id = "ami-0f96495a064477ffb"
   instance_type = "t2.micro"
   security_groups = ["${aws_security_group.instance.id}"]
-  user_data       = "${data.template_file.user_data.rendered}"
+  user_data = "${data.template_file.user_data.rendered}"
 
   lifecycle {
     create_before_destroy = true
@@ -39,14 +75,16 @@ resource "aws_launch_configuration" "example" {
 }
 
 resource "aws_autoscaling_group" "example" {
+  name = "${var.cluster_name}-${aws_launch_configuration.example.name}"
+
   launch_configuration = "${aws_launch_configuration.example.id}"
   availability_zones = ["ap-southeast-2a", "ap-southeast-2b"]
-
   load_balancers = ["${aws_elb.example.name}"]
   health_check_type = "ELB"
 
   min_size = "${var.min_size}"
   max_size = "${var.max_size}"
+  min_elb_capacity = "${var.min_size}"
 
   tag {
     key                        = "Name"
@@ -55,6 +93,27 @@ resource "aws_autoscaling_group" "example" {
   }
 }
 
+resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
+  count = "${var.enable_autoscaling}"
+
+  scheduled_action_name = "scale-out-during-business-hours"
+  min_size = 2
+  max_size = 10
+  desired_capacity = 10
+  recurrence = "0 9 * * *"
+  autoscaling_group_name = "${aws_autoscaling_group.example.name}"
+}
+
+resource "aws_autoscaling_schedule" "scale_in_at_night" {
+  count = "${var.enable_autoscaling}"
+
+  scheduled_action_name = "scale-in-at-night"
+  min_size = 2
+  max_size = 10
+  desired_capacity = 2
+  recurrence = "0 17 * * *"
+  autoscaling_group_name = "${aws_autoscaling_group.example.name}"
+}
 
 resource "aws_security_group_rule" "allow_server_http_inbound" {
   type              = "ingress"
